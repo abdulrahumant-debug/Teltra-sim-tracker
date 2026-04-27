@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>TELTRA SIM Swap</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --orange: #f97316;
+    --orange-dark: #c2410c;
+    --bg: #060c18;
+    --card: #0d1117;
+    --card2: #111827;
+    --border: #1e293b;
+    --text: #f1f5f9;
+    --muted: #64748b;
+    --green: #4ade80;
+    --red: #ef4444;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    padding-bottom: 40px;
+  }
+
+  /* Header */
+  .header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .header-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--orange), var(--orange-dark));
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .header h1 {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    line-height: 1;
+  }
+
+  .header p {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    margin-top: 3px;
+  }
+
+  .ai-badge {
+    margin-left: auto;
+    background: #0f0800;
+    border: 1px solid #7c2d12;
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--orange);
+    letter-spacing: 0.08em;
+    flex-shrink: 0;
+  }
+
+  /* Content */
+  .content { padding: 16px; max-width: 600px; margin: 0 auto; }
+
+  /* Cards */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+
+  .card-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--orange);
+    margin-bottom: 14px;
+  }
+
+  /* Labels */
+  label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  label span { color: var(--red); }
+
+  /* Inputs */
+  input, select {
+    width: 100%;
+    background: #080d16;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: var(--mono);
+    outline: none;
+    transition: border-color 0.2s;
+    appearance: none;
+  }
+
+  input:focus, select:focus { border-color: var(--orange); }
+
+  select {
+    font-family: var(--sans);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23f97316' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    cursor: pointer;
+  }
+
+  .field { margin-bottom: 12px; }
+
+  /* Device rows */
+  .devices-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .device-row {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    position: relative;
+    animation: slideIn 0.2s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .device-row-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .device-num {
+    width: 26px;
+    height: 26px;
+    background: var(--orange);
+    color: #fff;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .device-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .remove-btn {
+    margin-left: auto;
+    background: none;
+    border: 1px solid #374151;
+    border-radius: 6px;
+    color: var(--muted);
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: var(--sans);
+    transition: all 0.2s;
+  }
+
+  .remove-btn:hover { border-color: var(--red); color: var(--red); }
+
+  .device-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  @media (max-width: 400px) {
+    .device-grid { grid-template-columns: 1fr; }
+  }
+
+  /* Add button */
+  .add-btn {
+    width: 100%;
+    background: none;
+    border: 1.5px dashed var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    color: var(--orange);
+    font-size: 14px;
+    font-weight: 700;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .add-btn:hover { border-color: var(--orange); background: rgba(249,115,22,0.05); }
+
+  /* Counter badge */
+  .counter {
+    background: var(--orange);
+    color: #fff;
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  /* Submit */
+  .submit-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--orange), var(--orange-dark));
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    padding: 18px;
+    font-size: 16px;
+    font-weight: 800;
+    font-family: var(--sans);
+    cursor: pointer;
+    box-shadow: 0 6px 30px rgba(249,115,22,0.3);
+    letter-spacing: 0.03em;
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+
+  .submit-btn:active { transform: scale(0.98); box-shadow: 0 2px 10px rgba(249,115,22,0.2); }
+  .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* Error */
+  .err { color: var(--red); font-size: 11px; margin-top: 4px; }
+
+  /* Success screen */
+  .success {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 80vh;
+    padding: 32px;
+    text-align: center;
+  }
+
+  .success-icon {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: #0d2b1a;
+    border: 2px solid #166534;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    margin-bottom: 24px;
+    animation: pop 0.4s ease;
+  }
+
+  @keyframes pop {
+    0% { transform: scale(0); }
+    70% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+
+  .success h2 { color: var(--green); font-size: 24px; font-weight: 800; margin-bottom: 8px; }
+  .success p { color: var(--muted); font-size: 14px; line-height: 1.6; margin-bottom: 4px; }
+
+  .success-detail {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 24px;
+    margin: 20px 0 32px;
+    text-align: left;
+    width: 100%;
+    max-width: 360px;
+  }
+
+  .success-detail p { color: var(--text); font-size: 13px; margin-bottom: 6px; }
+  .success-detail p:last-child { margin-bottom: 0; }
+  .success-detail span { color: var(--orange); font-family: var(--mono); }
+
+  .reset-btn {
+    background: linear-gradient(135deg, var(--orange), var(--orange-dark));
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 32px;
+    font-size: 15px;
+    font-weight: 800;
+    font-family: var(--sans);
+    cursor: pointer;
+  }
+
+  /* Loading spinner */
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">📶</div>
+  <div>
+    <h1>TELTRA SIM SWAP</h1>
+    <p>KUWAIT PTT FLEET · MULTI-DEVICE</p>
+  </div>
+  <div class="ai-badge">⚡ LIVE</div>
+</div>
+
+<div class="content" id="formView">
+
+  <!-- Engineer & Customer Info -->
+  <div class="card">
+    <p class="card-title">👷 Engineer & Customer Info</p>
+
+    <div class="field">
+      <label>Engineer Name <span>*</span></label>
+      <select id="engineerName">
+        <option value="">Select your name...</option>
+        <option>Abdulrahumaan</option>
+        <option>Fahad</option>
+        <option>Ayub</option>
+        <option>Basha</option>
+        <option>Najim</option>
+        <option>Other</option>
+      </select>
+      <p class="err" id="errEngineer"></p>
+    </div>
+
+    <div class="field">
+      <label>Customer Name <span>*</span></label>
+      <input type="text" id="customerName" placeholder="Enter customer name" />
+      <p class="err" id="errCustomer"></p>
+    </div>
+  </div>
+
+  <!-- Devices -->
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <p class="card-title" style="margin-bottom:0">📱 Devices</p>
+      <span class="counter" id="deviceCounter">1 device</span>
+    </div>
+
+    <div class="devices-list" id="devicesList"></div>
+
+    <button class="add-btn" onclick="addDevice()">
+      + Add Another Device
+    </button>
+  </div>
+
+  <!-- Submit -->
+  <button class="submit-btn" id="submitBtn" onclick="submitForm()">
+    Submit All Devices ✓
+  </button>
+
+</div>
+
+<!-- Success Screen -->
+<div class="content" id="successView" style="display:none">
+  <div class="success">
+    <div class="success-icon">✓</div>
+    <h2>All Logged!</h2>
+    <p id="successMsg">Devices submitted successfully</p>
+
+    <div class="success-detail" id="successDetail"></div>
+
+    <button class="reset-btn" onclick="resetForm()">+ New Submission</button>
+  </div>
+</div>
+
+<script>
+  // ── Config ────────────────────────────────────────────────
+  // Replace with your Google Apps Script URL
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxzIlc9fBQwwcK4SUM184WsxJXfswsIc_MC1qW4so-enpgJJ6S7O7Hb7b6jeogjTe_2YA/exec";
+
+  let deviceCount = 0;
+  let devices = [];
+
+  // ── Init ─────────────────────────────────────────────────
+  addDevice();
+
+  // ── Add Device Row ────────────────────────────────────────
+  function addDevice() {
+    deviceCount++;
+    const id = deviceCount;
+    devices.push(id);
+    updateCounter();
+
+    const row = document.createElement("div");
+    row.className = "device-row";
+    row.id = "device_" + id;
+    row.innerHTML = `
+      <div class="device-row-header">
+        <div class="device-num">${id}</div>
+        <span class="device-label">Device ${id}</span>
+        ${id > 1 ? `<button class="remove-btn" onclick="removeDevice(${id})">✕ Remove</button>` : ""}
+      </div>
+      <div class="device-grid">
+        <div class="field">
+          <label>IMEI Number <span>*</span></label>
+          <input type="tel" id="imei_${id}" placeholder="15-digit IMEI" maxlength="15" />
+          <p class="err" id="errImei_${id}"></p>
+        </div>
+        <div class="field">
+          <label>SIM Number <span>*</span></label>
+          <input type="tel" id="sim_${id}" placeholder="SIM number" />
+          <p class="err" id="errSim_${id}"></p>
+        </div>
+      </div>
+    `;
+    document.getElementById("devicesList").appendChild(row);
+
+    // Focus on IMEI field of new device
+    setTimeout(() => {
+      const imeiField = document.getElementById("imei_" + id);
+      if (imeiField) imeiField.focus();
+    }, 100);
+  }
+
+  // ── Remove Device ─────────────────────────────────────────
+  function removeDevice(id) {
+    const row = document.getElementById("device_" + id);
+    if (row) {
+      row.style.animation = "none";
+      row.style.opacity = "0";
+      row.style.transform = "translateY(-8px)";
+      row.style.transition = "all 0.2s";
+      setTimeout(() => row.remove(), 200);
+    }
+    devices = devices.filter(d => d !== id);
+    updateCounter();
+  }
+
+  // ── Counter ───────────────────────────────────────────────
+  function updateCounter() {
+    const count = document.querySelectorAll(".device-row").length;
+    const el = document.getElementById("deviceCounter");
+    // Use setTimeout to wait for DOM update
+    setTimeout(() => {
+      const actual = document.querySelectorAll(".device-row").length;
+      el.textContent = actual + (actual === 1 ? " device" : " devices");
+    }, 250);
+  }
+
+  // ── Validate ──────────────────────────────────────────────
+  function validate() {
+    let valid = true;
+
+    // Engineer
+    const engineer = document.getElementById("engineerName").value;
+    document.getElementById("errEngineer").textContent = "";
+    if (!engineer) {
+      document.getElementById("errEngineer").textContent = "Required";
+      valid = false;
+    }
+
+    // Customer
+    const customer = document.getElementById("customerName").value.trim();
+    document.getElementById("errCustomer").textContent = "";
+    if (!customer) {
+      document.getElementById("errCustomer").textContent = "Required";
+      valid = false;
+    }
+
+    // Devices
+    const rows = document.querySelectorAll(".device-row");
+    rows.forEach(row => {
+      const id = row.id.replace("device_", "");
+      const imei = document.getElementById("imei_" + id);
+      const sim  = document.getElementById("sim_" + id);
+      const errI = document.getElementById("errImei_" + id);
+      const errS = document.getElementById("errSim_" + id);
+
+      if (imei) errI.textContent = "";
+      if (sim)  errS.textContent = "";
+
+      if (imei && !imei.value.trim()) {
+        errI.textContent = "IMEI required";
+        valid = false;
+      }
+      if (sim && !sim.value.trim()) {
+        errS.textContent = "SIM required";
+        valid = false;
+      }
+    });
+
+    return valid;
+  }
+
+  // ── Submit ────────────────────────────────────────────────
+  function submitForm() {
+    if (!validate()) return;
+
+    const btn = document.getElementById("submitBtn");
+    const engineer = document.getElementById("engineerName").value;
+    const customer = document.getElementById("customerName").value.trim();
+    const timestamp = new Date().toISOString();
+
+    // Collect all device rows
+    const rows = document.querySelectorAll(".device-row");
+    const entries = [];
+
+    rows.forEach(row => {
+      const id = row.id.replace("device_", "");
+      const imei = document.getElementById("imei_" + id)?.value.trim();
+      const sim  = document.getElementById("sim_" + id)?.value.trim();
+      if (imei && sim) {
+        entries.push({ timestamp, imei, sim, customer, engineer });
+      }
+    });
+
+    // Show loading
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Submitting...';
+
+    // Send all entries
+    let sent = 0;
+    entries.forEach(entry => {
+      const params = new URLSearchParams({
+        timestamp: entry.timestamp,
+        imei: entry.imei,
+        newSim: entry.sim,
+        oldSim: "—",
+        customerName: entry.customer,
+        technician: entry.engineer,
+        reason: "SIM Replacement",
+        area: "Kuwait",
+        note: "",
+        hasDevicePhoto: "false",
+        hasSimPhoto: "false",
+        callback: "cb_" + Date.now() + "_" + Math.random().toString(36).slice(2),
+      });
+
+      const cbName = params.get("callback");
+      window[cbName] = () => { delete window[cbName]; };
+      const script = document.createElement("script");
+      script.src = SCRIPT_URL + "?" + params.toString();
+      document.head.appendChild(script);
+      setTimeout(() => { try { document.head.removeChild(script); } catch {} }, 10000);
+      sent++;
+    });
+
+    // Show success after short delay
+    setTimeout(() => {
+      showSuccess(entries, engineer, customer);
+    }, 1500);
+  }
+
+  // ── Success Screen ────────────────────────────────────────
+  function showSuccess(entries, engineer, customer) {
+    document.getElementById("formView").style.display = "none";
+    document.getElementById("successView").style.display = "block";
+
+    document.getElementById("successMsg").textContent =
+      entries.length + " device" + (entries.length > 1 ? "s" : "") + " submitted successfully";
+
+    let html = `
+      <p>👷 Engineer: <span>${engineer}</span></p>
+      <p>👤 Customer: <span>${customer}</span></p>
+      <p style="margin-top:10px;margin-bottom:6px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase">Devices:</p>
+    `;
+    entries.forEach((e, i) => {
+      html += `<p>${i+1}. IMEI: <span>${e.imei}</span> | SIM: <span>${e.sim}</span></p>`;
+    });
+    document.getElementById("successDetail").innerHTML = html;
+  }
+
+  // ── Reset ─────────────────────────────────────────────────
+  function resetForm() {
+    document.getElementById("successView").style.display = "none";
+    document.getElementById("formView").style.display = "block";
+    document.getElementById("engineerName").value = "";
+    document.getElementById("customerName").value = "";
+    document.getElementById("devicesList").innerHTML = "";
+    deviceCount = 0;
+    devices = [];
+    const btn = document.getElementById("submitBtn");
+    btn.disabled = false;
+    btn.innerHTML = "Submit All Devices ✓";
+    addDevice();
+  }
+</script>
+</body>
+</html>
