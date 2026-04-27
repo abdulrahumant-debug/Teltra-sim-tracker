@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>TELTRA Repair Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+:root {
+  --orange:#f97316;--orange-dark:#c2410c;--bg:#060c18;--card:#0d1117;
+  --card2:#111827;--border:#1e293b;--text:#f1f5f9;--muted:#64748b;
+  --green:#4ade80;--red:#ef4444;--blue:#60a5fa;--yellow:#facc15;
+  --purple:#c084fc;--orange2:#fb923c;
+  --mono:'Space Mono',monospace;--sans:'Syne',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;padding-bottom:80px;}
+
+.header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 16px;position:sticky;top:0;z-index:100;}
+.header-top{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.header-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--orange),var(--orange-dark));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.header h1{font-size:14px;font-weight:800;letter-spacing:0.05em;line-height:1;}
+.header p{font-size:10px;color:var(--muted);letter-spacing:0.08em;margin-top:2px;}
+.live-badge{margin-left:auto;background:#0d2b1a;border:1px solid #166534;border-radius:20px;padding:4px 10px;font-size:10px;font-weight:700;color:var(--green);letter-spacing:0.08em;flex-shrink:0;display:flex;align-items:center;gap:4px;}
+.live-dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+.tabs{display:flex;gap:6px;}
+.tab{flex:1;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 4px;font-size:11px;font-weight:700;font-family:var(--sans);cursor:pointer;color:var(--muted);text-align:center;letter-spacing:0.04em;transition:all 0.2s;}
+.tab.active{background:var(--orange);color:#fff;border-color:var(--orange);}
+
+.content{padding:14px;max-width:600px;margin:0 auto;}
+.view{display:none;}
+.view.active{display:block;}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px;}
+.card-title{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--orange);margin-bottom:14px;}
+
+.field{margin-bottom:12px;}
+label{display:block;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+label span{color:var(--red);}
+input,select,textarea{width:100%;background:#080d16;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;font-family:var(--mono);outline:none;transition:border-color 0.2s;appearance:none;}
+input:focus,select:focus,textarea:focus{border-color:var(--orange);}
+select{font-family:var(--sans);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23f97316' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;cursor:pointer;}
+textarea{font-family:var(--sans);resize:none;}
+.err{color:var(--red);font-size:11px;margin-top:4px;}
+
+.btn-primary{width:100%;background:linear-gradient(135deg,var(--orange),var(--orange-dark));color:#fff;border:none;border-radius:12px;padding:16px;font-size:15px;font-weight:800;font-family:var(--sans);cursor:pointer;box-shadow:0 4px 20px rgba(249,115,22,0.3);letter-spacing:0.03em;transition:transform 0.1s;}
+.btn-primary:active{transform:scale(0.98);}
+.btn-primary:disabled{opacity:0.6;cursor:not-allowed;}
+
+.status{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;border:1px solid;}
+.s-collected{background:#2b2500;color:var(--yellow);border-color:#854d0e;}
+.s-received{background:#0d1a2b;color:var(--blue);border-color:#1e3a5f;}
+.s-waiting-spare{background:#2b1a0d;color:var(--orange2);border-color:#9a3412;}
+.s-waiting-appr{background:#2b0d0d;color:var(--red);border-color:#991b1b;}
+.s-repairing{background:#1a0d2b;color:var(--purple);border-color:#6b21a8;}
+.s-ready{background:#0d2b1a;color:var(--green);border-color:#166534;}
+.s-delivered{background:#1a1a1a;color:var(--muted);border-color:#374151;}
+
+.device-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color 0.2s;}
+.device-card:hover{border-color:var(--orange);}
+.device-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+.device-imei{color:var(--orange);font-family:var(--mono);font-size:13px;font-weight:700;}
+.device-time{color:var(--muted);font-size:11px;}
+.device-model{color:var(--text);font-size:13px;font-weight:600;margin-bottom:6px;}
+.meta-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.meta-tag{background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;color:var(--muted);}
+
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:200;align-items:flex-end;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--card);border-radius:20px 20px 0 0;padding:20px 16px 40px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;animation:slideUp 0.3s ease;}
+@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.modal-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px;}
+.modal-title{font-size:16px;font-weight:800;margin-bottom:4px;}
+.modal-close{float:right;background:none;border:1px solid var(--border);border-radius:8px;padding:4px 10px;color:var(--muted);cursor:pointer;font-family:var(--sans);font-size:12px;}
+
+.tl-item{display:flex;gap:12px;margin-bottom:16px;}
+.tl-dot{width:10px;height:10px;border-radius:50%;background:var(--orange);flex-shrink:0;margin-top:4px;position:relative;}
+.tl-dot::after{content:'';position:absolute;top:10px;left:4px;width:2px;height:calc(100% + 6px);background:var(--border);}
+.tl-item:last-child .tl-dot::after{display:none;}
+.tl-label{font-size:12px;font-weight:700;color:var(--text);}
+.tl-time{font-size:11px;color:var(--muted);margin-top:2px;}
+
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 8px;text-align:center;}
+.stat-val{font-size:20px;font-weight:800;color:var(--orange);}
+.stat-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-top:2px;}
+
+.filter-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none;}
+.filter-row::-webkit-scrollbar{display:none;}
+.pill{flex-shrink:0;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;font-family:var(--sans);transition:all 0.2s;}
+.pill.active{background:var(--orange);color:#fff;border-color:var(--orange);}
+
+.status-btn{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:13px;font-weight:700;font-family:var(--sans);cursor:pointer;text-align:left;margin-bottom:8px;transition:all 0.2s;display:flex;align-items:center;gap:10px;}
+.status-btn:hover{border-color:var(--orange);}
+
+.empty{text-align:center;padding:60px 20px;color:var(--muted);}
+.spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block;margin-right:8px;vertical-align:middle;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.success-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;padding:32px;text-align:center;}
+.success-icon-big{width:80px;height:80px;border-radius:50%;background:#0d2b1a;border:2px solid #166534;display:flex;align-items:center;justify-content:center;font-size:36px;margin-bottom:20px;animation:pop 0.4s ease;}
+@keyframes pop{0%{transform:scale(0);}70%{transform:scale(1.1);}100%{transform:scale(1);}}
+
+.search-box{position:relative;margin-bottom:12px;}
+.search-box input{padding-left:36px;font-family:var(--sans);}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);}
+
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(6,12,24,0.9);z-index:300;align-items:center;justify-content:center;flex-direction:column;gap:16px;}
+.loading-overlay.show{display:flex;}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div style="width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+  <p style="color:var(--muted);font-size:13px;">Connecting to Firebase...</p>
+</div>
+
+<div class="header">
+  <div class="header-top">
+    <div class="header-icon">🔧</div>
+    <div>
+      <h1>TELTRA REPAIR TRACKER</h1>
+      <p>DEVICE MAINTENANCE · REAL-TIME</p>
+    </div>
+    <div class="live-badge"><div class="live-dot"></div> LIVE</div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('technician')">👷 Technician</button>
+    <button class="tab" onclick="switchTab('workshop')">🔧 Workshop</button>
+    <button class="tab" onclick="switchTab('track')">📊 My Devices</button>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- TECHNICIAN VIEW -->
+  <div class="view active" id="view-technician">
+    <div id="tech-form-view">
+      <div class="card">
+        <p class="card-title">📦 Collect Device from Customer</p>
+        <div class="field">
+          <label>Engineer Name <span>*</span></label>
+          <select id="t-engineer">
+            <option value="">Select your name...</option>
+            <option>Abdulrahumaan</option><option>Fahad</option>
+            <option>Ayub</option><option>Basha</option>
+            <option>Najim</option><option>Other</option>
+          </select>
+          <p class="err" id="err-t-engineer"></p>
+        </div>
+        <div class="field">
+          <label>Customer Name <span>*</span></label>
+          <input type="text" id="t-customer" placeholder="Enter customer name"/>
+          <p class="err" id="err-t-customer"></p>
+        </div>
+        <div class="field">
+          <label>Device IMEI <span>*</span></label>
+          <input type="tel" id="t-imei" placeholder="15-digit IMEI" maxlength="15"/>
+          <p class="err" id="err-t-imei"></p>
+        </div>
+        <div class="field">
+          <label>Device Model <span>*</span></label>
+          <input type="text" id="t-model" placeholder="e.g. Hytera PD785, Motorola R7"/>
+          <p class="err" id="err-t-model"></p>
+        </div>
+        <div class="field">
+          <label>Problem Description <span>*</span></label>
+          <textarea id="t-problem" rows="3" placeholder="Describe the issue..."></textarea>
+          <p class="err" id="err-t-problem"></p>
+        </div>
+        <div class="field">
+          <label>Priority</label>
+          <select id="t-priority">
+            <option value="Normal">🟡 Normal</option>
+            <option value="Urgent">🔴 Urgent</option>
+            <option value="Critical">🚨 Critical</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-primary" id="tech-submit-btn" onclick="submitCollection()">📦 Log Device Collection</button>
+    </div>
+    <div id="tech-success-view" style="display:none">
+      <div class="success-screen">
+        <div class="success-icon-big">✓</div>
+        <h2 style="color:var(--green);font-size:22px;font-weight:800;margin-bottom:8px">Device Logged!</h2>
+        <p style="color:var(--muted);margin-bottom:4px">Sent to workshop — real time ✅</p>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:24px;font-family:var(--mono)" id="tech-success-ref"></p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+          <button class="btn-primary" style="width:auto;padding:12px 20px;font-size:13px" onclick="resetTechForm()">+ New Collection</button>
+          <button class="btn-primary" style="width:auto;padding:12px 20px;font-size:13px;background:var(--card);color:var(--orange);box-shadow:none;border:1px solid var(--orange)" onclick="switchTab('track')">📊 Track Devices</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WORKSHOP VIEW -->
+  <div class="view" id="view-workshop">
+    <div class="stats-grid" id="ws-stats"></div>
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="ws-search" placeholder="Search IMEI, customer, engineer..." oninput="renderWorkshop()"/>
+    </div>
+    <div class="filter-row" id="ws-filters"></div>
+    <div id="ws-list"></div>
+  </div>
+
+  <!-- TRACK VIEW -->
+  <div class="view" id="view-track">
+    <div class="card">
+      <p class="card-title">📊 Track Your Devices</p>
+      <div class="field">
+        <label>Select Engineer</label>
+        <select id="track-engineer" onchange="renderTrack()">
+          <option value="">All Engineers</option>
+          <option>Abdulrahumaan</option><option>Fahad</option>
+          <option>Ayub</option><option>Basha</option>
+          <option>Najim</option><option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div id="track-list"></div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="deviceModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeModal()">✕ Close</button>
+    <h2 class="modal-title" id="modal-title">Device Details</h2>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script>
+// ── Firebase Config ───────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyAFsDKpLiRRV66xMZ36BYfbBgnkZYbxaP8",
+  authDomain: "teltra-repair-tracker.firebaseapp.com",
+  databaseURL: "https://teltra-repair-tracker-default-rtdb.firebaseio.com",
+  projectId: "teltra-repair-tracker",
+  storageBucket: "teltra-repair-tracker.firebasestorage.app",
+  messagingSenderId: "956909142903",
+  appId: "1:956909142903:web:aead0c35e6846e2d1c9772"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const devicesRef = db.ref("devices");
+
+// ── State ─────────────────────────────────────────────────────
+let devices = {};
+let activeFilter = "All";
+let activeTab = "technician";
+
+// ── Real-time listener ────────────────────────────────────────
+document.getElementById("loadingOverlay").classList.add("show");
+devicesRef.on("value", snap => {
+  devices = snap.val() || {};
+  document.getElementById("loadingOverlay").classList.remove("show");
+  if (activeTab === "workshop") renderWorkshop();
+  if (activeTab === "track") renderTrack();
+});
+
+// ── Status Config ─────────────────────────────────────────────
+const STATUSES = [
+  { key:"Collected",        label:"Collected from Customer", icon:"📦", cls:"s-collected" },
+  { key:"Received",         label:"Received at Workshop",    icon:"🏭", cls:"s-received" },
+  { key:"Waiting Spare",    label:"Waiting Spare Parts",     icon:"⏳", cls:"s-waiting-spare" },
+  { key:"Waiting Approval", label:"Waiting Approval",        icon:"📋", cls:"s-waiting-appr" },
+  { key:"Repairing",        label:"Under Repair",            icon:"🔧", cls:"s-repairing" },
+  { key:"Ready",            label:"Ready for Collection",    icon:"✅", cls:"s-ready" },
+  { key:"Delivered",        label:"Delivered to Customer",   icon:"🎉", cls:"s-delivered" },
+];
+
+function getCfg(key) { return STATUSES.find(s => s.key === key) || STATUSES[0]; }
+function statusBadge(key) {
+  const s = getCfg(key);
+  return `<span class="status ${s.cls}">${s.icon} ${s.label}</span>`;
+}
+function fmtDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) +
+    " " + d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+}
+function priorityIcon(p) { return p==="Urgent"?"🔴":p==="Critical"?"🚨":"🟡"; }
+
+// ── Tab Switch ────────────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll(".tab").forEach((t,i) => {
+    t.classList.toggle("active", ["technician","workshop","track"][i] === tab);
+  });
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.getElementById("view-" + tab).classList.add("active");
+  if (tab === "workshop") renderWorkshop();
+  if (tab === "track") renderTrack();
+}
+
+// ── Submit Collection ─────────────────────────────────────────
+function submitCollection() {
+  const engineer = document.getElementById("t-engineer").value;
+  const customer = document.getElementById("t-customer").value.trim();
+  const imei     = document.getElementById("t-imei").value.trim();
+  const model    = document.getElementById("t-model").value.trim();
+  const problem  = document.getElementById("t-problem").value.trim();
+  const priority = document.getElementById("t-priority").value;
+
+  let valid = true;
+  [["err-t-engineer",engineer],["err-t-customer",customer],
+   ["err-t-imei",imei],["err-t-model",model],["err-t-problem",problem]].forEach(([id,val])=>{
+    document.getElementById(id).textContent = val ? "" : "Required";
+    if (!val) valid = false;
+  });
+  if (!valid) return;
+
+  const btn = document.getElementById("tech-submit-btn");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Logging...';
+
+  const id = "REP" + Date.now();
+  const device = {
+    id, timestamp: new Date().toISOString(),
+    engineer, customer, imei, model, problem, priority,
+    status: "Collected",
+    history: [{ status:"Collected", time: new Date().toISOString(), by: engineer, note:"" }]
+  };
+
+  devicesRef.child(id).set(device, err => {
+    if (!err) {
+      document.getElementById("tech-form-view").style.display = "none";
+      document.getElementById("tech-success-view").style.display = "block";
+      document.getElementById("tech-success-ref").textContent = "Ref: " + id;
+    } else {
+      alert("Error saving. Please check your connection.");
+      btn.disabled = false;
+      btn.innerHTML = "📦 Log Device Collection";
+    }
+  });
+}
+
+function resetTechForm() {
+  ["t-engineer","t-priority"].forEach(id => document.getElementById(id).selectedIndex = 0);
+  ["t-customer","t-imei","t-model","t-problem"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("tech-submit-btn").disabled = false;
+  document.getElementById("tech-submit-btn").innerHTML = "📦 Log Device Collection";
+  document.getElementById("tech-form-view").style.display = "block";
+  document.getElementById("tech-success-view").style.display = "none";
+}
+
+// ── Workshop Render ───────────────────────────────────────────
+function renderWorkshop() {
+  const q = (document.getElementById("ws-search")?.value || "").toLowerCase();
+  const list = Object.values(devices).sort((a,b) => new Date(b.timestamp)-new Date(a.timestamp));
+
+  // Stats
+  const total    = list.length;
+  const active   = list.filter(d => d.status !== "Delivered").length;
+  const ready    = list.filter(d => d.status === "Ready").length;
+  const urgent   = list.filter(d => d.priority === "Urgent" || d.priority === "Critical").length;
+  document.getElementById("ws-stats").innerHTML = [
+    {l:"Total",v:total},{l:"Active",v:active},{l:"Ready",v:ready},{l:"Urgent",v:urgent}
+  ].map(s=>`<div class="stat-card"><div class="stat-val">${s.v}</div><div class="stat-label">${s.l}</div></div>`).join("");
+
+  // Filters
+  document.getElementById("ws-filters").innerHTML =
+    ["All",...STATUSES.map(s=>s.key)].map(k=>
+      `<button class="pill ${activeFilter===k?"active":""}" onclick="setFilter('${k}')">${k==="All"?"All":getCfg(k).icon+" "+k}</button>`
+    ).join("");
+
+  // Filter + search
+  let filtered = list;
+  if (activeFilter !== "All") filtered = filtered.filter(d => d.status === activeFilter);
+  if (q) filtered = filtered.filter(d =>
+    d.imei.includes(q)||d.customer.toLowerCase().includes(q)||
+    d.engineer.toLowerCase().includes(q)||d.model.toLowerCase().includes(q)
+  );
+
+  if (filtered.length === 0) {
+    document.getElementById("ws-list").innerHTML = `<div class="empty"><div style="font-size:40px;margin-bottom:12px">📭</div><p>No devices found</p></div>`;
+    return;
+  }
+
+  document.getElementById("ws-list").innerHTML = filtered.map(d => `
+    <div class="device-card" onclick="openModal('${d.id}')">
+      <div class="device-card-top">
+        <span class="device-imei">${d.imei}</span>
+        <span class="device-time">${fmtDate(d.timestamp).split(" ").slice(0,3).join(" ")}</span>
+      </div>
+      <div class="device-model">${d.model}</div>
+      <div style="margin-bottom:8px">${statusBadge(d.status)}</div>
+      <div class="meta-row">
+        <span class="meta-tag">👷 ${d.engineer}</span>
+        <span class="meta-tag">👤 ${d.customer}</span>
+        <span class="meta-tag">${priorityIcon(d.priority)} ${d.priority}</span>
+      </div>
+      <p style="color:var(--muted);font-size:12px;margin-top:8px;line-height:1.4">${d.problem.slice(0,80)}${d.problem.length>80?"...":""}</p>
+    </div>
+  `).join("");
+}
+
+function setFilter(key) { activeFilter = key; renderWorkshop(); }
+
+// ── Track Render ──────────────────────────────────────────────
+function renderTrack() {
+  const eng = document.getElementById("track-engineer").value;
+  let list = Object.values(devices).sort((a,b) => new Date(b.timestamp)-new Date(a.timestamp));
+  if (eng) list = list.filter(d => d.engineer === eng);
+
+  if (list.length === 0) {
+    document.getElementById("track-list").innerHTML = `<div class="empty"><div style="font-size:40px;margin-bottom:12px">📭</div><p>No devices found</p></div>`;
+    return;
+  }
+
+  document.getElementById("track-list").innerHTML = list.map(d => `
+    <div class="device-card" onclick="openModal('${d.id}')">
+      <div class="device-card-top">
+        <span class="device-imei">${d.imei}</span>
+        <span class="device-time">${fmtDate(d.timestamp).split(" ").slice(0,3).join(" ")}</span>
+      </div>
+      <div class="device-model">${d.model}</div>
+      <div style="margin-bottom:8px">${statusBadge(d.status)}</div>
+      <div class="meta-row">
+        <span class="meta-tag">👤 ${d.customer}</span>
+        <span class="meta-tag">${priorityIcon(d.priority)} ${d.priority}</span>
+      </div>
+      <p style="color:var(--muted);font-size:12px;margin-top:8px;line-height:1.4">${d.problem.slice(0,60)}${d.problem.length>60?"...":""}</p>
+    </div>
+  `).join("");
+}
+
+// ── Modal ─────────────────────────────────────────────────────
+function openModal(id) {
+  const d = devices[id];
+  if (!d) return;
+  const isWorkshop = activeTab === "workshop";
+
+  document.getElementById("modal-title").textContent = d.model;
+  document.getElementById("modal-content").innerHTML = `
+    <p style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:12px">Ref: ${d.id}</p>
+    <div style="margin-bottom:14px">${statusBadge(d.status)}</div>
+
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <p style="color:var(--muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">IMEI</p>
+          <p style="font-family:var(--mono);font-size:13px;color:var(--orange)">${d.imei}</p>
+        </div>
+        <div>
+          <p style="color:var(--muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">Priority</p>
+          <p style="font-size:13px">${priorityIcon(d.priority)} ${d.priority}</p>
+        </div>
+        <div>
+          <p style="color:var(--muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">Engineer</p>
+          <p style="font-size:13px">👷 ${d.engineer}</p>
+        </div>
+        <div>
+          <p style="color:var(--muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">Customer</p>
+          <p style="font-size:13px">👤 ${d.customer}</p>
+        </div>
+        <div style="grid-column:span 2">
+          <p style="color:var(--muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">Problem</p>
+          <p style="font-size:13px;line-height:1.5;color:var(--text)">${d.problem}</p>
+        </div>
+      </div>
+    </div>
+
+    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:10px">Timeline</p>
+    <div style="margin-bottom:16px">
+      ${(d.history||[]).map(h=>`
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div>
+            <p class="tl-label">${getCfg(h.status).icon} ${getCfg(h.status).label}</p>
+            <p class="tl-time">${fmtDate(h.time)}${h.by?" · "+h.by:""}</p>
+            ${h.note?`<p style="color:var(--muted);font-size:12px;margin-top:3px;font-style:italic">"${h.note}"</p>`:""}
+          </div>
+        </div>
+      `).join("")}
+    </div>
+
+    ${isWorkshop && d.status !== "Delivered" ? `
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:10px">Update Status</p>
+      <textarea id="status-note" rows="2" placeholder="Add a note (optional)..." style="margin-bottom:10px"></textarea>
+      ${STATUSES.filter(s=>s.key!==d.status).map(s=>`
+        <button class="status-btn" onclick="updateStatus('${d.id}','${s.key}')">
+          ${s.icon} ${s.label}
+        </button>
+      `).join("")}
+    ` : ""}
+  `;
+
+  document.getElementById("deviceModal").classList.add("open");
+}
+
+function closeModal() { document.getElementById("deviceModal").classList.remove("open"); }
+
+// ── Update Status ─────────────────────────────────────────────
+function updateStatus(id, newStatus) {
+  const note = document.getElementById("status-note")?.value.trim() || "";
+  const historyEntry = { status: newStatus, time: new Date().toISOString(), by: "Workshop", note };
+
+  devicesRef.child(id).transaction(device => {
+    if (device) {
+      device.status = newStatus;
+      if (!device.history) device.history = [];
+      device.history.push(historyEntry);
+    }
+    return device;
+  }, err => {
+    if (!err) { closeModal(); renderWorkshop(); }
+    else alert("Update failed. Please try again.");
+  });
+}
+
+document.getElementById("deviceModal").addEventListener("click", function(e) {
+  if (e.target === this) closeModal();
+});
+</script>
+</body>
+</html>
