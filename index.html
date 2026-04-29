@@ -564,11 +564,17 @@
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Submitting...';
 
-    // Send all entries
-    let sent = 0;
-    entries.forEach(entry => {
+    // Send entries ONE BY ONE with delay — fixes Google Script drop issue
+    function sendEntry(index) {
+      if (index >= entries.length) {
+        // All sent — show success
+        showSuccess(entries, engineer, customer);
+        return;
+      }
+      const entry = entries[index];
+      const cbName = "cb_" + Date.now() + "_" + Math.random().toString(36).slice(2);
       const params = new URLSearchParams({
-        timestamp: entry.timestamp,
+        timestamp: new Date().toISOString(),
         imei: entry.imei,
         newSim: entry.sim,
         oldSim: "—",
@@ -579,22 +585,22 @@
         note: "",
         hasDevicePhoto: "false",
         hasSimPhoto: "false",
-        callback: "cb_" + Date.now() + "_" + Math.random().toString(36).slice(2),
+        callback: cbName,
       });
 
-      const cbName = params.get("callback");
       window[cbName] = () => { delete window[cbName]; };
       const script = document.createElement("script");
       script.src = SCRIPT_URL + "?" + params.toString();
       document.head.appendChild(script);
-      setTimeout(() => { try { document.head.removeChild(script); } catch {} }, 10000);
-      sent++;
-    });
 
-    // Show success after short delay
-    setTimeout(() => {
-      showSuccess(entries, engineer, customer);
-    }, 1500);
+      // Wait 800ms before sending next entry
+      setTimeout(() => {
+        try { document.head.removeChild(script); } catch {}
+        sendEntry(index + 1);
+      }, 800);
+    }
+
+    sendEntry(0);
   }
 
   // ── Success Screen ────────────────────────────────────────
