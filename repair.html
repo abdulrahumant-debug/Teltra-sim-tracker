@@ -251,6 +251,20 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+const SHEETS_URL = "https://script.google.com/macros/s/AKfycbwWYxeHOUq3UDjwMjjm4q_zEPLmgqapUxP1eNGygwLvOO3uBF1DKB202M-2Lw6Cr5g9/exec";
+
+// ── Sync to Google Sheet ──────────────────────────────────────
+function syncToSheet(data) {
+  try {
+    const cb = "cb_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+    const p = new URLSearchParams({ callback: cb, ...data });
+    window[cb] = () => { delete window[cb]; };
+    const s = document.createElement("script");
+    s.src = SHEETS_URL + "?" + p.toString();
+    document.head.appendChild(s);
+    setTimeout(() => { try { document.head.removeChild(s); } catch {} }, 10000);
+  } catch {}
+}
 const db = firebase.database();
 const devicesRef = db.ref("devices");
 
@@ -334,6 +348,15 @@ function submitCollection() {
 
   devicesRef.child(id).set(device, err => {
     if (!err) {
+      // Sync to Google Sheet
+      syncToSheet({
+        sheet_type: "repair",
+        action: "Collected",
+        id: device.id,
+        timestamp: device.timestamp,
+        imei, model, customer, engineer, problem, priority,
+        status: "Collected"
+      });
       document.getElementById("tech-form-view").style.display = "none";
       document.getElementById("tech-success-view").style.display = "block";
       document.getElementById("tech-success-ref").textContent = "Ref: " + id;
@@ -494,9 +517,28 @@ function openModal(id) {
         </button>
       `).join("")}
     ` : ""}
+    ${isWorkshop ? `
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+        <button onclick="deleteDevice('${d.id}')" style="width:100%;background:none;border:1px solid var(--red);border-radius:10px;padding:12px;color:var(--red);font-size:13px;font-weight:700;font-family:var(--sans);cursor:pointer;">
+          🗑 Delete This Device Record
+        </button>
+      </div>
+    ` : ""}
   `;
 
   document.getElementById("deviceModal").classList.add("open");
+}
+
+function deleteDevice(id) {
+  const d = devices[id];
+  if (!d) return;
+  if (!confirm("Delete device " + d.imei + "? This cannot be undone.")) return;
+  devicesRef.child(id).remove(err => {
+    if (!err) {
+      closeModal();
+      renderWorkshop();
+    } else alert("Delete failed. Please try again.");
+  });
 }
 
 function closeModal() { document.getElementById("deviceModal").classList.remove("open"); }
@@ -506,6 +548,7 @@ function updateStatus(id, newStatus) {
   const note = document.getElementById("status-note")?.value.trim() || "";
   const historyEntry = { status: newStatus, time: new Date().toISOString(), by: "Workshop", note };
 
+  const deviceData = devices[id];
   devicesRef.child(id).transaction(device => {
     if (device) {
       device.status = newStatus;
@@ -514,8 +557,23 @@ function updateStatus(id, newStatus) {
     }
     return device;
   }, err => {
-    if (!err) { closeModal(); renderWorkshop(); }
-    else alert("Update failed. Please try again.");
+    if (!err) {
+      // Sync status update to Google Sheet
+      syncToSheet({
+        sheet_type: "repair_update",
+        action: newStatus,
+        id: id,
+        imei: deviceData?.imei || "",
+        model: deviceData?.model || "",
+        customer: deviceData?.customer || "",
+        engineer: deviceData?.engineer || "",
+        status: newStatus,
+        note,
+        timestamp: new Date().toISOString()
+      });
+      closeModal();
+      renderWorkshop();
+    } else alert("Update failed. Please try again.");
   });
 }
 
